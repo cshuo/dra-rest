@@ -12,6 +12,8 @@ from rest_framework.decorators import (
 )
 import ast
 import requests
+import time, datetime
+from collections import OrderedDict
 
 from . import config
 from .utils import get_token_tenant
@@ -44,12 +46,13 @@ def vms_list(request, format=None):
     ret_info = {'total': len(vms), 'vms': []}
     for vm in vms:
         ret_info['vms'].append({
-	    'id': vm['id'],
+            'id': vm['id'],
             'name': vm['name'],
             'ip': vm['addresses'].values()[0][0]['addr'],
             'host': vm['OS-EXT-SRV-ATTR:host'],
             'status': vm['status'],
-            'created': vm['created']
+            'created': vm['created'],
+            'flavor':vm['flavor']['id']
         })
     return Response(ret_info)
 
@@ -74,6 +77,68 @@ def pms_list(request, format=None):
     ret_info = {'total': len(pms), 'pms': pms}
     return Response(ret_info)
 
+@api_view(['GET'])
+def flavor_list(request, format=None):
+    data = get_token_tenant(request)
+    if data['code'] == 400:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+    elif data['code'] == 401:
+        return Response({}, status=status.HTTP_401_UNAUTHORIZED)
+    token_id, tenant_id = data['data']
+    flavors_url = config.NOVA_URL + tenant_id + '/flavors/detail'
+    headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
+    r = requests.get(flavors_url, headers=headers)
+    if r.status_code != 200:
+        return Response({}, status=status.HTTP_404_NOT_FOUND)
+
+    flavors = r.json()['flavors']
+    flavor_dict = dict()
+    for f in flavors:
+        flavor_dict[f['id']] = {
+            'name': f['name'],
+            'cpu': f['vcpus'],
+            'ram': f['ram'],
+            'disk': f['disk']
+        }
+    return Response(flavor_dict)
+
+@api_view(['GET'])
+def vnc_url(request, vm_id, format=None):
+    data = get_token_tenant(request)
+    if data['code'] == 400:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+    elif data['code'] == 401:
+        return Response({}, status=status.HTTP_401_UNAUTHORIZED)
+    token_id, tenant_id = data['data']
+
+    vnc_url = config.NOVA_URL + tenant_id + '/servers/' + vm_id + '/action'
+    params = {"os-getVNCConsole":{"type":"novnc"}}
+    headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
+    post = requests.post(vnc_url, json=params, headers=headers)
+    r = dict()
+    if post.status_code != 200:
+        return Response({}, status=status.HTTP_404_NOT_FOUND)
+    else:
+        r['vnc'] = eval(post.text)['console']['url']
+        return Response(r)
+
+
+@api_view(['GET'])
+def usages(request, format=None):
+    data = get_token_tenant(request)
+    if data['code'] == 400:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+    elif data['code'] == 401:
+        return Response({}, status=status.HTTP_401_UNAUTHORIZED)
+    token_id, tenant_id = data['data']
+
+    usages_url = config.NOVA_URL + tenant_id + '/os-hypervisors/statistics'
+    headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
+    r = requests.get(usages_url, headers=headers)
+    if r.status_code != 200:
+        return Response({}, status=status.HTTP_404_NOT_FOUND)
+    return Response(r.json()['hypervisor_statistics'])
+
 
 @api_view(['GET'])
 def vm_detail(request, vm_id, format=None):
@@ -89,7 +154,6 @@ def vm_detail(request, vm_id, format=None):
     r = requests.get(vm_url, headers=headers)
     if r.status_code != 200:
         return Response({}, status=status.HTTP_404_NOT_FOUND)
-
     r = r.json()['server']
     flavor_id = r['flavor']['id']
     flavor_url = config.NOVA_URL + tenant_id + '/flavors/' +flavor_id
@@ -116,6 +180,52 @@ def pm_detail(request, pm_id, format=None):
     if r.status_code != 200:
         return Response({}, status=status.HTTP_404_NOT_FOUND)
     return Response(r.json()['hypervisor'])
+
+
+@api_view(['GET'])
+def meters(request, name, format=None):
+    data = get_token_tenant(request)
+    if data['code'] == 400:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+    elif data['code'] == 401:
+        return Response({}, status=status.HTTP_401_UNAUTHORIZED)
+    token_id,_ = data['data']
+
+    try:
+        resource_id = request.GET['resource']
+        interval = request.GET['interval']
+    except:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+    meter_url = config.CEIL_URL + 'meters/' + name
+
+    # cal time range to get meter samples
+    now_t = time.gmtime()
+    end_t = datetime.datetime(*now_t[:6])
+    # TODO check validity of interval, must be number
+    begin_t = end_t - datetime.timedelta(hours=int(interval))
+    print begin_t.isoformat()
+    print end_t.isoformat()
+
+    # query params
+    req_payload = (
+        ('q.field','resource_id'),('q.op','eq'),('q.value', resource_id),
+        ('q.field','timestamp'),('q.op','ge'),('q.value', begin_t.isoformat()),
+        ('q.field','timestamp'),('q.op','lt'),('q.value', end_t.isoformat())
+    )
+    headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
+    r = requests.get(meter_url, params=req_payload, headers=headers)
+    if r.status_code != 200:
+        print r.status_code
+        return Response({}, status=status.HTTP_404_NOT_FOUND)
+
+    ret_d = {'time':[], 'value':[]}
+    for s in r.json():
+        ret_d['time'].append(s['timestamp'].split('.')[0].split('T')[1])
+        ret_d['value'].append(float(s['counter_volume']))
+    ret_d['time'].reverse()
+    ret_d['value'].reverse()
+    return Response(ret_d)
 
 
 @api_view(('GET',))
