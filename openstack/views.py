@@ -19,7 +19,27 @@ from . import config
 from .utils import get_token_tenant
 
 
-# Create your views here.
+@api_view(['POST'])
+def login(request, format=None):
+    try:
+        username = request.data['username']
+        passwd = request.data['password']
+    except:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+    payload = {'auth': {'tenantName': config.TENANT, 'passwordCredentials': {'username': username, 'password': passwd}}}
+    headers = {'Content-type': 'application/json'}
+    r = requests.post(config.AUTH_URL, json=payload, headers=headers)
+    print r.status_code
+    if r.status_code != 200:
+        return Response({}, status=status.HTTP_404_NOT_FOUND)
+
+    ret_info = r.json()
+    r_data = {'access': {'token_id': ret_info['access']['token']['id'],
+                         'tenant_id': ret_info['access']['token']['tenant']['id']}}
+    return Response(r_data)
+
+
 @api_view(['GET'])
 def vms_list(request, format=None):
     """
@@ -52,7 +72,7 @@ def vms_list(request, format=None):
             'host': vm['OS-EXT-SRV-ATTR:host'],
             'status': vm['status'],
             'created': vm['created'],
-            'flavor':vm['flavor']['id']
+            'flavor': vm['flavor']['id']
         })
     return Response(ret_info)
 
@@ -76,6 +96,7 @@ def pms_list(request, format=None):
     pms = r.json()['hypervisors']
     ret_info = {'total': len(pms), 'pms': pms}
     return Response(ret_info)
+
 
 @api_view(['GET'])
 def flavor_list(request, format=None):
@@ -102,6 +123,7 @@ def flavor_list(request, format=None):
         }
     return Response(flavor_dict)
 
+
 @api_view(['GET'])
 def vnc_url(request, vm_id, format=None):
     data = get_token_tenant(request)
@@ -112,14 +134,14 @@ def vnc_url(request, vm_id, format=None):
     token_id, tenant_id = data['data']
 
     vnc_url = config.NOVA_URL + tenant_id + '/servers/' + vm_id + '/action'
-    params = {"os-getVNCConsole":{"type":"novnc"}}
+    params = {"os-getVNCConsole": {"type": "novnc"}}
     headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
     post = requests.post(vnc_url, json=params, headers=headers)
     r = dict()
     if post.status_code != 200:
         return Response({}, status=status.HTTP_404_NOT_FOUND)
     else:
-        r['vnc'] = eval(post.text)['console']['url']
+        r['vnc'] = post.json()['console']['url']
         return Response(r)
 
 
@@ -156,7 +178,7 @@ def vm_detail(request, vm_id, format=None):
         return Response({}, status=status.HTTP_404_NOT_FOUND)
     r = r.json()['server']
     flavor_id = r['flavor']['id']
-    flavor_url = config.NOVA_URL + tenant_id + '/flavors/' +flavor_id
+    flavor_url = config.NOVA_URL + tenant_id + '/flavors/' + flavor_id
     flavor_info = requests.get(flavor_url, headers=headers).json()['flavor']
     r['flavor_name'] = flavor_info['name']
     r['disk'] = flavor_info['disk']
@@ -189,7 +211,7 @@ def meters(request, name, format=None):
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
     elif data['code'] == 401:
         return Response({}, status=status.HTTP_401_UNAUTHORIZED)
-    token_id,_ = data['data']
+    token_id, _ = data['data']
 
     try:
         resource_id = request.GET['resource']
@@ -209,9 +231,9 @@ def meters(request, name, format=None):
 
     # query params
     req_payload = (
-        ('q.field','resource_id'),('q.op','eq'),('q.value', resource_id),
-        ('q.field','timestamp'),('q.op','ge'),('q.value', begin_t.isoformat()),
-        ('q.field','timestamp'),('q.op','lt'),('q.value', end_t.isoformat())
+        ('q.field', 'resource_id'), ('q.op', 'eq'), ('q.value', resource_id),
+        ('q.field', 'timestamp'), ('q.op', 'ge'), ('q.value', begin_t.isoformat()),
+        ('q.field', 'timestamp'), ('q.op', 'lt'), ('q.value', end_t.isoformat())
     )
     headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
     r = requests.get(meter_url, params=req_payload, headers=headers)
@@ -219,7 +241,7 @@ def meters(request, name, format=None):
         print r.status_code
         return Response({}, status=status.HTTP_404_NOT_FOUND)
 
-    ret_d = {'time':[], 'value':[]}
+    ret_d = {'time': [], 'value': []}
     for s in r.json():
         ret_d['time'].append(s['timestamp'].split('.')[0].split('T')[1])
         ret_d['value'].append(float(s['counter_volume']))

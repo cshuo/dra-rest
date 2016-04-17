@@ -12,7 +12,7 @@ def get_token_tenant(request):
     except:
         return {'code':400, 'data':[None, None]}
 
-    token_url = config.AUTH_URL + 'tokens'
+    token_url = config.AUTH_URL
     post_d = {'auth': {'tenantName': tenant, 'passwordCredentials': {'username': user, 'password': passwd}}}
     r = requests.post(token_url, json=post_d, headers={'Content-type': 'application/json'})
     if r.status_code == 200:
