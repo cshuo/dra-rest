@@ -5,10 +5,16 @@ from . import config
 
 
 def get_token_tenant(request):
+    if request.method == 'GET':
+        req_json = request.GET
+    else:
+        if request.method ==  'DELETE':
+            print request.data 
+        req_json = request.data
     try:
-        tenant = request.GET['tenant']
-        user = request.GET['username']
-        passwd = request.GET['password']
+        tenant = req_json['tenant']
+        user = req_json['username']
+        passwd = req_json['password']
     except:
         return {'code':400, 'data':[None, None]}
 

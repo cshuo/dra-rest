@@ -30,7 +30,6 @@ def login(request, format=None):
     payload = {'auth': {'tenantName': config.TENANT, 'passwordCredentials': {'username': username, 'password': passwd}}}
     headers = {'Content-type': 'application/json'}
     r = requests.post(config.AUTH_URL, json=payload, headers=headers)
-    print r.status_code
     if r.status_code != 200:
         return Response({}, status=status.HTTP_404_NOT_FOUND)
 
@@ -56,7 +55,7 @@ def vms_list(request, format=None):
 
     token_id, tenant_id = data['data']
 
-    vms_url = config.NOVA_URL + tenant_id + '/servers/detail'
+    vms_url = config.NOVA_URL + tenant_id + '/servers/detail?all_tenants=true'
     headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
     # TODO check whether return result is empty
     r = requests.get(vms_url, headers=headers)
@@ -162,7 +161,7 @@ def usages(request, format=None):
     return Response(r.json()['hypervisor_statistics'])
 
 
-@api_view(['GET'])
+@api_view(['GET','PUT','DELETE'])
 def vm_detail(request, vm_id, format=None):
     data = get_token_tenant(request)
     if data['code'] == 400:
@@ -171,20 +170,46 @@ def vm_detail(request, vm_id, format=None):
         return Response({}, status=status.HTTP_401_UNAUTHORIZED)
 
     token_id, tenant_id = data['data']
-    vm_url = config.NOVA_URL + tenant_id + '/servers/' + vm_id
     headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
-    r = requests.get(vm_url, headers=headers)
-    if r.status_code != 200:
-        return Response({}, status=status.HTTP_404_NOT_FOUND)
-    r = r.json()['server']
-    flavor_id = r['flavor']['id']
-    flavor_url = config.NOVA_URL + tenant_id + '/flavors/' + flavor_id
-    flavor_info = requests.get(flavor_url, headers=headers).json()['flavor']
-    r['flavor_name'] = flavor_info['name']
-    r['disk'] = flavor_info['disk']
-    r['cpu'] = flavor_info['vcpus']
-    r['ram'] = flavor_info['ram']
-    return Response(r)
+    if request.method == 'GET':
+        # get detail info of a vm
+        vm_url = config.NOVA_URL + tenant_id + '/servers/' + vm_id
+        r = requests.get(vm_url, headers=headers)
+        if r.status_code != 200:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)
+        r = r.json()['server']
+        flavor_id = r['flavor']['id']
+        flavor_url = config.NOVA_URL + tenant_id + '/flavors/' + flavor_id
+        flavor_info = requests.get(flavor_url, headers=headers).json()['flavor']
+        r['flavor_name'] = flavor_info['name']
+        r['disk'] = flavor_info['disk']
+        r['cpu'] = flavor_info['vcpus']
+        r['ram'] = flavor_info['ram']
+        return Response(r)
+    elif request.method == 'PUT':
+        # exec actions(start, stop) on a vm
+        cmd = request.data['cmd']
+        action_url = config.NOVA_URL + tenant_id + '/servers/' + vm_id + '/action'
+        if cmd == 'stop':
+            post_val = {'os-stop': 'null'}
+        elif cmd == 'start':
+            post_val = {'os-start': 'null'}
+        else:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+        r = requests.post(action_url, json=post_val, headers=headers)
+        if r.status_code == 202:
+            return Response({})
+        else:
+            print r.json()
+            return Response(r.json(), status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == 'DELETE':
+        # delete a vm
+        vm_url = config.NOVA_URL + tenant_id + '/servers/' + vm_id
+        r = requests.delete(vm_url, headers=headers)
+        if r.status_code == 204:
+            return Response({})
+        else:
+            return Response(r.json(), status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
