@@ -7,6 +7,7 @@ urlpatterns = [
     url(r'^login$', views.login, name='login'),
     url(r'^vms$', views.vms_list, name='vms'),
     url(r'^pms$', views.pms_list, name='pms'),
+    url(r'^infos$', views.infos, name='infos'),
     url(r'^flavors$', views.flavor_list, name='flavors'),
     url(r'^vnc/(?P<vm_id>\S+)$', views.vnc_url, name='vnc'),
     url(r'^usages$', views.usages, name='usages'),

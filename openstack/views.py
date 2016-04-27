@@ -12,6 +12,7 @@ from rest_framework.decorators import (
 )
 import ast
 import requests
+import json
 import time, datetime
 from collections import OrderedDict
 
@@ -39,7 +40,7 @@ def login(request, format=None):
     return Response(r_data)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 def vms_list(request, format=None):
     """
     get vms overview list
@@ -55,25 +56,42 @@ def vms_list(request, format=None):
 
     token_id, tenant_id = data['data']
 
-    vms_url = config.NOVA_URL + tenant_id + '/servers/detail?all_tenants=true'
     headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
-    # TODO check whether return result is empty
-    r = requests.get(vms_url, headers=headers)
-    if r.status_code != 200:
-        return Response({}, status=status.HTTP_404_NOT_FOUND)
-    vms = r.json()['servers']
-    ret_info = {'total': len(vms), 'vms': []}
-    for vm in vms:
-        ret_info['vms'].append({
-            'id': vm['id'],
-            'name': vm['name'],
-            'ip': vm['addresses'].values()[0][0]['addr'],
-            'host': vm['OS-EXT-SRV-ATTR:host'],
-            'status': vm['status'],
-            'created': vm['created'],
-            'flavor': vm['flavor']['id']
-        })
-    return Response(ret_info)
+
+    if request.method == 'GET':
+        vms_url = config.NOVA_URL + tenant_id + '/servers/detail?all_tenants=true'
+        r = requests.get(vms_url, headers=headers)
+        if r.status_code != 200:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)
+        vms = r.json()['servers']
+        ret_info = {'total': len(vms), 'vms': []}
+        for vm in vms:
+            ret_info['vms'].append({
+                'id': vm['id'],
+                'name': vm['name'],
+                'ip': vm['addresses'].values()[0][0]['addr'],
+                'host': vm['OS-EXT-SRV-ATTR:host'],
+                'status': vm['status'],
+                'created': vm['created'],
+                'flavor': vm['flavor']['id']
+            })
+        return Response(ret_info)
+
+    elif request.method == 'POST':
+        post_url = config.NOVA_URL + tenant_id + '/servers'
+        try:
+            server = request.data['server']
+            print type(server)
+            print server
+        except:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+        post_val = {'server': json.loads(server)}
+
+        r = requests.post(post_url, json=post_val, headers=headers)
+        if r.status_code != 202:
+            return Response(r.json(), status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({})
 
 
 @api_view(['GET'])
@@ -263,7 +281,6 @@ def meters(request, name, format=None):
     headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
     r = requests.get(meter_url, params=req_payload, headers=headers)
     if r.status_code != 200:
-        print r.status_code
         return Response({}, status=status.HTTP_404_NOT_FOUND)
 
     ret_d = {'time': [], 'value': []}
@@ -273,6 +290,39 @@ def meters(request, name, format=None):
     ret_d['time'].reverse()
     ret_d['value'].reverse()
     return Response(ret_d)
+
+
+@api_view(['GET'])
+def infos(request, format=None):
+    data = get_token_tenant(request)
+    if data['code'] == 400:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+    elif data['code'] == 401:
+        return Response({}, status=status.HTTP_401_UNAUTHORIZED)
+
+    token_id, tenant_id = data['data']
+
+    images_url = config.NOVA_URL + tenant_id + '/images/detail'
+    flavors_url = config.NOVA_URL + tenant_id + '/flavors/detail'
+    nets_url = config.NOVA_URL + tenant_id + '/os-networks'
+    keys_url = config.NOVA_URL + tenant_id + '/os-keypairs'
+    headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
+
+    ret_info = {}
+    r_image = requests.get(images_url, headers=headers)
+    r_flavor = requests.get(flavors_url, headers=headers)
+    r_net = requests.get(nets_url, headers=headers)
+    r_key = requests.get(keys_url, headers=headers)
+    if r_key.status_code != 200 or r_net.status_code != 200 \
+            or r_flavor.status_code != 200 or r_image.status_code != 200:
+        print '404 here'
+        return Response({}, status=status.HTTP_404_NOT_FOUND)
+
+    ret_info['images'] = r_image.json()['images']
+    ret_info['flavors'] = r_flavor.json()['flavors']
+    ret_info['networks'] = r_net.json()['networks']
+    ret_info['keys'] = r_key.json()['keypairs']
+    return Response(ret_info)
 
 
 @api_view(('GET',))

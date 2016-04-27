@@ -7,10 +7,9 @@ from . import config
 def get_token_tenant(request):
     if request.method == 'GET':
         req_json = request.GET
-    else:
-        if request.method ==  'DELETE':
-            print request.data 
+    else: 
         req_json = request.data
+
     try:
         tenant = req_json['tenant']
         user = req_json['username']
