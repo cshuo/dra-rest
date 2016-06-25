@@ -18,7 +18,11 @@ from collections import OrderedDict
 
 from . import config
 from .utils import get_token_tenant
-
+from .db.utils import(
+    create_rules_table,
+    RuleDb,
+    DbUtil
+)
 
 @api_view(['POST'])
 def login(request, format=None):
@@ -92,6 +96,69 @@ def vms_list(request, format=None):
             return Response(r.json(), status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({})
+
+
+@api_view(['GET'])
+def maps_list(request, format=None):
+    data = get_token_tenant(request)
+    if data['code'] == 400:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+    elif data['code'] == 401:
+        return Response({}, status=status.HTTP_401_UNAUTHORIZED)
+    token_id, tenant_id = data['data']
+    headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
+
+    if request.method != 'GET':
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+    vms_url = config.NOVA_URL + tenant_id + '/servers/detail?all_tenants=true'
+    r = requests.get(vms_url, headers=headers)
+    if r.status_code != 200:
+        return Response({}, status=status.HTTP_404_NOT_FOUND)
+    vms = r.json()['servers']
+
+    maps = {}
+    for vm in vms:
+        if vm['OS-EXT-SRV-ATTR:host'] not in maps:
+            maps[vm['OS-EXT-SRV-ATTR:host']] = []
+        maps[vm['OS-EXT-SRV-ATTR:host']].append((vm['id'], vm['name']))
+    return Response(maps)
+
+
+@api_view(['GET', 'POST'])
+def rules(request, format=None):
+    if request.method == 'GET':
+        rules = RuleDb.list_rules()
+        if rules == None:
+            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response(rules)
+    elif request.method == 'POST':
+        try:
+            name = request.data['name']
+            app_type = request.data['app_type']
+            content = request.data['content']
+        except:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+        add_success = RuleDb.add_rule(name=name, app_type=app_type, content=content)
+        if add_success:
+            return Response({'log':'add rule successfully'})
+        else:
+            return Response({'log':'fail to add rule'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'DELETE'])
+def rule(request, name, format=None):
+    if request.method == 'GET':
+        rule_info = RuleDb.query_rule(name)
+        if not rule_info:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)
+        return Response(rule_info)
+    elif request.method == 'DELETE':
+        delete_success = RuleDb.rm_rule(name)
+        if not delete_success:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)
+        return Response({})
 
 
 @api_view(['GET'])
