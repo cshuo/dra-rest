@@ -263,6 +263,13 @@ def vm_detail(request, vm_id, format=None):
         if r.status_code != 200:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
         r = r.json()['server']
+
+        ips = []
+        for key in r['addresses'].keys():
+            for net in r['addresses'][key]:
+                ips.append(net['addr'])
+        r['ips'] = ips
+
         flavor_id = r['flavor']['id']
         flavor_url = config.NOVA_URL + tenant_id + '/flavors/' + flavor_id
         flavor_info = requests.get(flavor_url, headers=headers).json()['flavor']
