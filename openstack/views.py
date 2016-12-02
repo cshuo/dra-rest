@@ -17,7 +17,10 @@ import time, datetime
 from collections import OrderedDict
 
 from . import config
-from .utils import get_token_tenant
+from .utils import (
+    get_token_tenant,
+    get_zabbix_warning
+)
 from .db.utils import(
     create_rules_table,
     RuleDb,
@@ -145,6 +148,23 @@ def rules(request, format=None):
             return Response({'log':'add rule successfully'})
         else:
             return Response({'log':'fail to add rule'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def warnings(request, format=None):
+    if request.method == 'GET':
+        try:
+            base_ip = request.GET['baseip']
+        except:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+        warning_list = get_zabbix_warning(base_ip)
+        if warning_list:
+            return Response(warning_list)
+        else:
+            return Response({'Log': 'Zabbix internal error.'}, status=status.HTTP_404_NOT_FOUND)
+    else:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET', 'DELETE'])
