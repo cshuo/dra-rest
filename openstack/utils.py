@@ -90,4 +90,30 @@ def get_zabbix_warning(baseIP):
        "id":1,
     })
     # create request object
+    warnings = zabbix_req(baseIP, data)
+    for w in warnings:
+        w['description'] = w['description'].replace('{HOST.NAME}', 'instance:ubuntu')
+    return warnings
+
+
+def get_zabbix_history(baseIP, item_id, limit=10):
+    token = get_zabbix_token(baseIP)
+    if not token:
+        return None
+    data = json.dumps(
+    {
+       "jsonrpc":"2.0",
+       "method":"history.get",
+       "params":{
+           "output":"extend",
+           "history":0,
+           "itemids":item_id,
+           "sortfield": "clock",
+           "sortorder": "DESC",
+           "limit":limit
+       },
+       "auth":token, # theauth id is what auth script returns, remeber it is string
+       "id":1,
+    })
+    # create request object
     return zabbix_req(baseIP, data)

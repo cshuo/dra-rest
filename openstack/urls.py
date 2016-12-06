@@ -10,6 +10,7 @@ urlpatterns = [
     url(r'^maps$', views.maps_list, name='maps'),
     url(r'^rules$', views.rules, name='rules'),
     url(r'^warnings$', views.warnings, name='warnings'),
+    url(r'^metrics$', views.metrics, name='metrics'),
     url(r'^rule/(?P<name>\S+)$', views.rule, name='rule'),
     url(r'^infos$', views.infos, name='infos'),
     url(r'^flavors$', views.flavor_list, name='flavors'),

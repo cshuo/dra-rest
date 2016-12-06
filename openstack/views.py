@@ -13,13 +13,15 @@ from rest_framework.decorators import (
 import ast
 import requests
 import json
-import time, datetime
+import time 
+import datetime
 from collections import OrderedDict
 
 from . import config
 from .utils import (
     get_token_tenant,
-    get_zabbix_warning
+    get_zabbix_warning,
+    get_zabbix_history
 )
 from .db.utils import(
     create_rules_table,
@@ -165,6 +167,43 @@ def warnings(request, format=None):
             return Response({'Log': 'Zabbix internal error.'}, status=status.HTTP_404_NOT_FOUND)
     else:
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def metrics(request, format=None):
+    if request.method == 'GET':
+        try:
+            base_ip = request.GET['baseip']
+        except:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+        responsetime_id = '25400'
+        throughput_id = '25396'
+        rt_list = get_zabbix_history(base_ip, responsetime_id)
+        tp_list = get_zabbix_history(base_ip, throughput_id)
+
+        rt_data = {'time':[], 'value':[]}
+        tp_data = {'time':[], 'value':[]}
+
+        if rt_list and tp_list:
+            for d in rt_list:
+                rt_data['time'].append(datetime.datetime.fromtimestamp(int(d['clock'])).strftime('%H:%M:%S'));
+                rt_data['value'].append(float(d['value'])*1000);
+            for d in tp_list:
+                tp_data['time'].append(datetime.datetime.fromtimestamp(int(d['clock'])).strftime('%H:%M:%S'));
+                tp_data['value'].append(float(d['value'])/1000);
+
+            rt_data['time'].reverse()
+            rt_data['value'].reverse()
+            tp_data['time'].reverse()
+            tp_data['value'].reverse()
+            return Response({"responsetime": rt_data, "throughput": tp_data})    
+
+        else:
+            return Response({'Log': 'Zabbix internal error.'}, status=status.HTTP_404_NOT_FOUND)
+    else:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 @api_view(['GET', 'DELETE'])
@@ -384,6 +423,8 @@ def meters(request, name, format=None):
     ret_d['time'].reverse()
     ret_d['value'].reverse()
     return Response(ret_d)
+
+
 
 
 @api_view(['GET'])
