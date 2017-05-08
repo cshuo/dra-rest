@@ -117,10 +117,16 @@ def maps_list(request, format=None):
         return Response({}, status=status.HTTP_404_NOT_FOUND)
     vms = r.json()['servers']
 
+    pms_url = config.NOVA_URL + tenant_id + '/os-hypervisors'
+    r = requests.get(pms_url, headers=headers)
+    if r.status_code != 200:
+        return Response({}, status=status.HTTP_404_NOT_FOUND)
+    pms = r.json()['hypervisors']
+
     maps = {}
+    for pm in pms:
+        maps[pm['hypervisor_hostname']] = []
     for vm in vms:
-        if vm['OS-EXT-SRV-ATTR:host'] not in maps:
-            maps[vm['OS-EXT-SRV-ATTR:host']] = []
         maps[vm['OS-EXT-SRV-ATTR:host']].append((vm['id'], vm['name']))
     return Response(maps)
 
@@ -178,6 +184,7 @@ def pms_list(request, format=None):
         return Response({}, status=status.HTTP_404_NOT_FOUND)
 
     pms = r.json()['hypervisors']
+    print pms
     ret_info = {'total': len(pms), 'pms': pms}
     return Response(ret_info)
 
