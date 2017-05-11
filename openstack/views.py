@@ -5,6 +5,7 @@ from rest_framework.reverse import reverse
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
+from openstack.models import Log
 from rest_framework.decorators import (
     api_view,
     authentication_classes,
@@ -15,6 +16,7 @@ import requests
 import json
 import time, datetime
 from collections import OrderedDict
+from django.utils import timezone
 
 from . import config
 from .utils import get_token_tenant
@@ -404,6 +406,50 @@ def infos(request, format=None):
     ret_info['networks'] = r_net.json()['networks']
     ret_info['keys'] = r_key.json()['keypairs']
     return Response(ret_info)
+
+
+@api_view(['GET', 'POST', 'DELETE'])
+def logs(request, format=None):
+    if request.method == 'GET':
+        try:
+            holder = request.GET['holder']
+            num = request.GET['num']
+            types = request.GET['type']
+        except:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+        logs = Log.objects.filter(holder=holder, log_type=types).order_by('-time')[:6]
+        rs = []
+        for log in logs:
+            log_dict = {}
+            log_dict['holder'] = log.holder
+            log_dict['type'] = log.log_type
+            log_dict['info'] = log.log_info
+            log_dict['time'] = log.time
+            rs.append(log_dict)
+        return Response(rs)
+
+    elif request.method == 'POST':
+        try:
+            holder = request.data['holder']
+            types = request.data['type']
+            info = request.data['info']
+        except:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+        log = Log(holder=holder, log_type=types, log_info=info, time=timezone.now())
+        log.save()
+        return Response({})
+
+    elif request.method == 'DELETE':
+        try:
+            holder = request.data['holder']
+            types = request.data['type']
+        except:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+        Log.objects.filter(holder=holder, log_type=types).delete()
+        return Response({})
+
 
 
 @api_view(('GET',))

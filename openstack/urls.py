@@ -17,6 +17,7 @@ urlpatterns = [
     url(r'^vm/(?P<vm_id>\S+)$', views.vm_detail, name='vm'),
     url(r'^pm/(?P<pm_id>\S+)$', views.pm_detail, name='pm'),
     url(r'^meters/(?P<name>\S+)$', views.meters, name='meters'),
+    url(r'^logs$', views.logs, name='vms'),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)
