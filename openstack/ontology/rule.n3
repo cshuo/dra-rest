@@ -1,0 +1,43 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix : <http://cetc/onto.n3#> .
+
+{
+  ?x :has_component ?y .
+  ?x :has_component ?z
+} =>
+{
+  ?y :has_sibling ?z
+} .
+
+{
+  ?x :has_location ?y
+} =>
+{
+  ?x :related_to ?y
+} .
+
+{
+  ?x :has_sibling ?y .
+  ?y :has_location ?vm_y
+} =>
+{
+  ?x :related_to ?vm_y
+} .
+
+{
+  ?x :has_type ?y .
+  ?y :has_key_res ?z
+} =>
+{
+  ?x :key_res ?z
+} .
+
+# Symmetric
+{
+  ?x :has_sibling ?y
+} =>
+{
+  ?y :has_sibling ?x
+} .

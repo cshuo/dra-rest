@@ -1,0 +1,100 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix : <http://cetc/onto.n3#> .
+
+### Service
+:Service rdf:type owl:Class .
+:has_service_name rdf:type owl:ObjectProperty; rdfs:domain :Service .
+:has_service_id rdf:type owl:ObjectProperty; rdfs:domain :Service .
+:has_component rdf:type owl:ObjectProperty; rdfs:domain :Service; rdfs:range :App .
+
+### App
+:App rdf:type owl:Class .
+:has_app_name rdf:type owl:ObjectProperty; rdfs:domain :App .
+:has_app_id rdf:type owl:ObjectProperty; rdfs:domain :App .
+:has_type rdf:type owl:ObjectProperty; rdfs:domain :App; rdfs:range :AppType .
+:has_location rdf:type owl:ObjectProperty; rdfs:domain :App; rdfs:range :VM .
+:has_sibling rdf:type owl:ObjectProperty; rdfs:domain :App; rdfs:range :App .
+:key_res rdf:type owl:ObjectProperty; rdfs:domain :App .
+# :has_per_metric rdf:type owl:ObjectProperty; rdfs:domain :App; rdfs:range :PerfMetric .
+
+### APP TYPE
+:AppType rdf:type owl:Class .
+:has_key_res rdf:type owl:ObjectProperty; rdfs:domain :AppType .
+
+### Performance Metric
+:PerfMetric :type owl:Class .
+:has_mtc_name rdf:type owl:ObjectProperty; rdfs:domain :PerfMetric .
+:mtc_threshold rdf:type owl:ObjectProperty; rdfs:domain :PerfMetric .
+:related_res rdf:type owl:ObjectProperty; rdfs:domain :PerfMetric; rdfs:range :Resource .
+
+### Resource
+:Resource :type owl:Class .
+:has_res_name rdf:type owl:ObjectProperty; rdfs:domain :Resource .
+:has_res_size rdf:type owl:ObjectProperty; rdfs:domain :Resource .
+:has_threshold rdf:type owl:ObjectProperty; rdfs:domain :Resource .
+:has_location rdf:type owl:ObjectProperty; rdfs:domain :Resource; rdfs:range :VM .
+
+### VM: virtual machine
+:VM :type owl:Class .
+:has_vm_name rdf:type owl:ObjectProperty; rdfs:domain :VM .
+:has_vm_ip rdf:type owl:ObjectProperty; rdfs:domain :VM .
+:has_location rdf:type owl:ObjectProperty; rdfs:domain :VM; rdfs:range :PM .
+:related_to rdf:type owl:ObjectProperty; rdfs:domain :VM .
+
+### PM: physical machine
+:PM :type owl:Class .
+:has_pm_name rdf:type owl:ObjectProperty; rdfs:domain :PM .
+:has_pm_ip rdf:type owl:ObjectProperty; rdfs:domain :PM .
+
+
+##### instances of the ontology
+
+:Web rdf:type :AppType;
+    :has_key_res :Memory;
+    :has_key_res :Network .
+
+:Db rdf:type :AppType;
+    :has_key_res :Disk;
+    :has_key_res :CPU .
+
+:web1_service rdf:type :Service;
+    :has_component :web-1;
+    :has_component :db-1 .
+:web2_service rdf:type :Service;
+    :has_component :web-2;
+    :has_component :db-2 .
+:web3_service rdf:type :Service;
+    :has_component :web-3;
+    :has_component :db-3 .
+
+:web-1 rdf:type :App;
+    :has_type :Web;
+    :has_location :vm_web-1 .
+:db-1 rdf:type :App;
+    :has_type :Db;
+    :has_location :vm_db-1 .
+:web-2 rdf:type :App;
+    :has_type :Web;
+    :has_location :vm_web-2 .
+:db-2 rdf:type :App;
+    :has_type :Db;
+    :has_location :vm_db-2 .
+:web-3 rdf:type :App;
+    :has_type :Web;
+    :has_location :vm_web-3 .
+:db-3 rdf:type :App;
+    :has_type :Db;
+    :has_location :vm_db-3 .
+
+:kolla1 rdf:type :PM; :has_pm_ip :20_0_1_11 .
+:kolla2 rdf:type :PM; :has_pm_ip :20_0_1_12 .
+:kolla3 rdf:type :PM; :has_pm_ip :20_0_1_13 .
+
+:vm_web-1 rdf:type :VM; :has_vm_ip :100_0_1_11; :has_location :kolla1 .
+:vm_db-1 rdf:type :VM; :has_vm_ip :100_0_1_12; :has_location :kolla3 .
+:vm_web-2 rdf:type :VM; :has_vm_ip :100_0_1_13; :has_location :kolla2 .
+:vm_db-2 rdf:type :VM; :has_vm_ip :100_0_1_14; :has_location :kolla1 .
+:vm_web-3 rdf:type :VM; :has_vm_ip :100_0_1_15; :has_location :kolla3 .
+:vm_db-3 rdf:type :VM; :has_vm_ip :100_0_1_16; :has_location :kolla2 .

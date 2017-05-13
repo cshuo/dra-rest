@@ -19,7 +19,7 @@ from collections import OrderedDict
 from django.utils import timezone
 
 from . import config
-from .utils import get_token_tenant
+from .utils import get_token_tenant, get_related
 from .db.utils import(
     create_rules_table,
     RuleDb,
@@ -87,8 +87,6 @@ def vms_list(request, format=None):
         post_url = config.NOVA_URL + tenant_id + '/servers'
         try:
             server = request.data['server']
-            print type(server)
-            print server
         except:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
         post_val = {'server': json.loads(server)}
@@ -186,7 +184,6 @@ def pms_list(request, format=None):
         return Response({}, status=status.HTTP_404_NOT_FOUND)
 
     pms = r.json()['hypervisors']
-    print pms
     ret_info = {'total': len(pms), 'pms': pms}
     return Response(ret_info)
 
@@ -301,7 +298,6 @@ def vm_detail(request, vm_id, format=None):
         if r.status_code == 202:
             return Response({})
         else:
-            print r.json()
             return Response(r.json(), status=status.HTTP_400_BAD_REQUEST)
     elif request.method == 'DELETE':
         # delete a vm
@@ -351,9 +347,7 @@ def meters(request, name, format=None):
     now_t = time.gmtime()
     end_t = datetime.datetime(*now_t[:6])
     # TODO check validity of interval, must be number
-    begin_t = end_t - datetime.timedelta(hours=int(interval))
-    print begin_t.isoformat()
-    print end_t.isoformat()
+    begin_t = end_t - datetime.timedelta(hours=float(interval))
 
     # query params
     req_payload = (
@@ -418,7 +412,13 @@ def logs(request, format=None):
         except:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
-        logs = Log.objects.filter(holder=holder, log_type=types).order_by('-time')[:6]
+	if holder == 'all':
+	    logs = Log.objects.all().order_by('-time')[:int(num)]
+        elif types == 'all':
+            logs = Log.objects.filter(holder=holder).order_by('-time')[:int(num)]
+        else:
+            logs = Log.objects.filter(holder=holder, log_type=types).order_by('-time')[:int(num)]
+
         rs = []
         for log in logs:
             log_dict = {}
@@ -450,6 +450,19 @@ def logs(request, format=None):
         Log.objects.filter(holder=holder, log_type=types).delete()
         return Response({})
 
+
+@api_view(['GET'])
+def related(request, format=None):
+    try:
+        types = request.GET['type']
+        objects = request.GET['object']
+    except:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+    if types == 'vm':
+        rs = get_related(types, vm=objects)
+    else:
+        rs = get_related(types, app=objects)
+    return Response(rs)
 
 
 @api_view(('GET',))
