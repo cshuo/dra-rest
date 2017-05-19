@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 from django.shortcuts import render
 from rest_framework import status
 from rest_framework.response import Response
@@ -19,7 +20,11 @@ from collections import OrderedDict
 from django.utils import timezone
 
 from . import config
-from .utils import get_token_tenant, get_related
+from .utils import (
+    get_token_tenant,
+    get_related,
+    get_metrics
+)
 from .db.utils import(
     create_rules_table,
     RuleDb,
@@ -327,6 +332,32 @@ def pm_detail(request, pm_id, format=None):
 
 
 @api_view(['GET'])
+def pmeters(request, format=None):
+    """
+    获取物理机监控信息,基于zabbix
+    :param request:
+    :param format:
+    :return:
+    """
+    try:
+        host = request.GET['host']
+        numMnt = request.GET['num']
+    except:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+    data = get_metrics(host=host, num_minutes=int(numMnt))
+
+    for metric, val in data.items():
+        utctime = val['time']
+        time = []
+        for t in utctime:
+            time.append(datetime.datetime.utcfromtimestamp(int(t)).strftime('%H:%M:%S'))
+        data[metric]['time'] = time
+    print "######################\n", data
+    return Response(data)
+
+
+@api_view(['GET'])
 def meters(request, name, format=None):
     data = get_token_tenant(request)
     if data['code'] == 400:
@@ -366,6 +397,7 @@ def meters(request, name, format=None):
         ret_d['value'].append(float(s['counter_volume']))
     ret_d['time'].reverse()
     ret_d['value'].reverse()
+    print "---------------\n", ret_d
     return Response(ret_d)
 
 
