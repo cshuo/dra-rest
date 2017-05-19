@@ -92,9 +92,9 @@
 :kolla2 rdf:type :PM; :has_pm_ip :20_0_1_12 .
 :kolla3 rdf:type :PM; :has_pm_ip :20_0_1_13 .
 
-:vm_web-1 rdf:type :VM; :has_vm_ip :100_0_1_11; :has_location :kolla1 .
-:vm_db-1 rdf:type :VM; :has_vm_ip :100_0_1_12; :has_location :kolla3 .
+:vm_web-1 rdf:type :VM; :has_vm_ip :100_0_1_11; :has_location :kolla2 .
+:vm_db-1 rdf:type :VM; :has_vm_ip :100_0_1_12; :has_location :kolla1 .
 :vm_web-2 rdf:type :VM; :has_vm_ip :100_0_1_13; :has_location :kolla2 .
 :vm_db-2 rdf:type :VM; :has_vm_ip :100_0_1_14; :has_location :kolla1 .
-:vm_web-3 rdf:type :VM; :has_vm_ip :100_0_1_15; :has_location :kolla3 .
-:vm_db-3 rdf:type :VM; :has_vm_ip :100_0_1_16; :has_location :kolla2 .
+:vm_web-3 rdf:type :VM; :has_vm_ip :100_0_1_15; :has_location :kolla2 .
+:vm_db-3 rdf:type :VM; :has_vm_ip :100_0_1_16; :has_location :kolla1 .

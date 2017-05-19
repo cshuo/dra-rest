@@ -31,6 +31,7 @@ def get_token_tenant(request):
     if r.status_code == 200:
         token_id = r.json()["access"]["token"]["id"]
         tenant_id = r.json()["access"]["token"]["tenant"]["id"]
+        print token_id
         return {'code':200, 'data':[token_id, tenant_id]}
     else:
         return {'code':401, 'data':[None, None]}
