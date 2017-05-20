@@ -23,7 +23,8 @@ from . import config
 from .utils import (
     get_token_tenant,
     get_related,
-    get_metrics
+    get_metrics,
+    get_maps
 )
 from .db.utils import(
     create_rules_table,
@@ -105,6 +106,12 @@ def vms_list(request, format=None):
 
 @api_view(['GET'])
 def maps_list(request, format=None):
+    """
+    return maps of pm->vms, vm->apps, service->apps
+    :param request:
+    :param format:
+    :return:
+    """
     data = get_token_tenant(request)
     if data['code'] == 400:
         return Response({}, status=status.HTTP_400_BAD_REQUEST)
@@ -128,12 +135,17 @@ def maps_list(request, format=None):
         return Response({}, status=status.HTTP_404_NOT_FOUND)
     pms = r.json()['hypervisors']
 
-    maps = {}
+    pm_maps, vm_maps = {}, {}
     for pm in pms:
-        maps[pm['hypervisor_hostname']] = []
+        pm_maps[pm['hypervisor_hostname']] = []
     for vm in vms:
-        maps[vm['OS-EXT-SRV-ATTR:host']].append((vm['id'], vm['name']))
-    return Response(maps)
+        pm_maps[vm['OS-EXT-SRV-ATTR:host']].append((vm['id'], vm['name']))
+        vm_maps[vm['id']] = {}
+        vm_maps[vm['id']]['name'] = vm['name']
+        vm_maps[vm['id']]['apps'] = get_maps('vm', vm=vm['name'])
+
+    service_maps = get_maps('service')
+    return Response({'pm': pm_maps, 'service': service_maps, 'vm': vm_maps})
 
 
 @api_view(['GET', 'POST'])

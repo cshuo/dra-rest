@@ -85,10 +85,61 @@ the vms/res an app/vm related.
 
 
 def get_related(types, **kwargs):
+    _, inferedgraph, ns = build_graph()
+    # print closureDeltaGraph.serialize(format='n3')
+    rs = []
+    if types == 'res':
+        r_list = list(
+            inferedgraph.query('SELECT ?RESULT {:%s :key_res ?RESULT}' % kwargs['app'], initNs=ns))
+        for r in r_list:
+            rs.append(str(r.split('#')[1]))
+    elif types == 'app':
+        r_list = list(
+            inferedgraph.query('SELECT ?RESULT {:%s :related_to ?RESULT}' % kwargs[types], initNs=ns))
+        id_maps = get_id_name_maps()
+        for r in r_list:
+            name = str(r.split('#')[1])
+            rs.append({'name': name, 'id': id_maps[name]})
+    elif types == 'vm':
+        r_list = list(
+            inferedgraph.query('SELECT ?RESULT {:%s :related_to ?RESULT}' % kwargs[types], initNs=ns))
+        host_ids = get_hosts_info()
+        for r in r_list:
+            name = str(r.split('#')[1])
+            rs.append({'name': name, 'id': host_ids[name]})
+    return rs
+
+
+def get_maps(types, **kwargs):
+    """
+    get service-app maps and vm-app maps
+    :param types:
+    """
+    factgraph, _, ns = build_graph()
+
+    maps = {}
+    if types == 'service':
+        r_list = list(factgraph.query('SELECT ?RESULT {?RESULT rdf:type :Service}', initNs=ns))
+        srvs = format_list(r_list)
+        for s in srvs:
+            r_list = list(factgraph.query('SELECT ?RESULT {:%s :has_component ?RESULT}' % s, initNs=ns))
+            maps[s] = format_list(r_list)
+    else:
+        r_list = list(factgraph.query('SELECT ?RESULT {?RESULT :has_location :%s}' % kwargs['vm'], initNs=ns))
+        apps = format_list(r_list)
+        maps[kwargs['vm']] = apps
+
+    return maps
+
+
+def build_graph():
+    """
+    build factgraph from ontology, and build inferedGraph from rules and factgraph
+    """
     famNs = Namespace('http://cetc/onto.n3#')
     nsMapping = {'': famNs}
     rule_store, rule_graph, network = SetupRuleStore(makeNetwork=True)
-    closureDeltaGraph = Graph()
+    closureDeltaGraph=Graph()
     closureDeltaGraph.bind('', famNs)
     network.inferredFacts = closureDeltaGraph
 
@@ -99,28 +150,17 @@ def get_related(types, **kwargs):
     factGraph.bind('', famNs)
     network.feedFactsToAdd(generateTokenSet(factGraph))
 
-    # print closureDeltaGraph.serialize(format='n3')
-    rs = []
-    if types == 'res':
-        r_list = list(
-            closureDeltaGraph.query('SELECT ?RESULT {:%s :key_res ?RESULT}' % kwargs['app'], initNs=nsMapping))
-        for r in r_list:
-            rs.append(str(r.split('#')[1]))
-    elif types == 'app':
-        r_list = list(
-            closureDeltaGraph.query('SELECT ?RESULT {:%s :related_to ?RESULT}' % kwargs[types], initNs=nsMapping))
-        id_maps = get_id_name_maps()
-        for r in r_list:
-            name = str(r.split('#')[1])
-            rs.append({'name': name, 'id': id_maps[name]})
-    elif types == 'vm':
-        r_list = list(
-            closureDeltaGraph.query('SELECT ?RESULT {:%s :related_to ?RESULT}' % kwargs[types], initNs=nsMapping))
-        host_ids = get_hosts_info()
-        for r in r_list:
-            name = str(r.split('#')[1])
-            rs.append({'name': name, 'id': host_ids[name]})
-    return rs
+    return factGraph, closureDeltaGraph, nsMapping
+
+
+def format_list(rs):
+    """
+    dealed with the results returned from reasoning
+    """
+    frs = []
+    for r in rs:
+        frs.append(str(r.split('#')[1]))
+    return frs
 
 
 def get_metrics(host, num_minutes):
