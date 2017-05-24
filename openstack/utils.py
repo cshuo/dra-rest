@@ -85,12 +85,14 @@ the vms/res an app/vm related.
 
 
 def get_related(types, **kwargs):
+    """
+    """
     _, inferedgraph, ns = build_graph()
     # print closureDeltaGraph.serialize(format='n3')
     rs = []
     if types == 'res':
         r_list = list(
-            inferedgraph.query('SELECT ?RESULT {:%s :key_res ?RESULT}' % kwargs['app'], initNs=ns))
+            inferedgraph.query('SELECT ?RESULT {:%s :key_res ?RESULT}' % kwargs[types], initNs=ns))
         for r in r_list:
             rs.append(str(r.split('#')[1]))
     elif types == 'app':
@@ -161,6 +163,30 @@ def format_list(rs):
     for r in rs:
         frs.append(str(r.split('#')[1]))
     return frs
+
+
+def format_maps(pm_maps, vm_maps, service_maps):
+    """
+    generate required maps for frontend from map datas retrieved from backend
+    :param pm_maps:
+    :param vm_maps:
+    :param service_maps:
+    :return:
+    """
+    rs_data = []
+    for key, val in pm_maps.items():
+        pm_dict = {'id': key, 'data': {'cpu': 0, 'mem': 0, 'disk': 0, 'net': 0}, 'children': []}
+        for vm in val:
+            vm_dict = {'id': vm[0], 'name': vm[1], 'children': [], 'data': {'cpu': 0, 'mem': 0, 'disk': 0, 'net': 0}}
+            for app in vm_maps[vm[0]]['apps']:
+                app_dict = {'id': app, 'name': app}
+                for srv, apps in service_maps.items():
+                    if app in apps:
+                        app_dict['service'] = srv
+                vm_dict['children'].append(app_dict)
+            pm_dict['children'].append(vm_dict)
+        rs_data.append(pm_dict)
+    return rs_data
 
 
 def get_metrics(host, num_minutes):

@@ -24,7 +24,8 @@ from .utils import (
     get_token_tenant,
     get_related,
     get_metrics,
-    get_maps
+    get_maps,
+    format_maps
 )
 from .db.utils import(
     create_rules_table,
@@ -142,10 +143,11 @@ def maps_list(request, format=None):
         pm_maps[vm['OS-EXT-SRV-ATTR:host']].append((vm['id'], vm['name']))
         vm_maps[vm['id']] = {}
         vm_maps[vm['id']]['name'] = vm['name']
-        vm_maps[vm['id']]['apps'] = get_maps('vm', vm=vm['name'])
+        vm_maps[vm['id']]['apps'] = get_maps('vm', vm=vm['name'])[vm['name']]
 
     service_maps = get_maps('service')
-    return Response({'pm': pm_maps, 'service': service_maps, 'vm': vm_maps})
+    return Response(format_maps(pm_maps, vm_maps, service_maps))
+    # return Response({'pm': pm_maps, 'service': service_maps, 'vm': vm_maps})
 
 
 @api_view(['GET', 'POST'])
@@ -165,9 +167,9 @@ def rules(request, format=None):
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
         add_success = RuleDb.add_rule(name=name, app_type=app_type, content=content)
         if add_success:
-            return Response({'log':'add rule successfully'})
+            return Response({'log': 'add rule successfully'})
         else:
-            return Response({'log':'fail to add rule'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'log': 'fail to add rule'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET', 'DELETE'])
