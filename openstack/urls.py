@@ -19,7 +19,9 @@ urlpatterns = [
     url(r'^meters/(?P<name>\S+)$', views.meters, name='meters'),
     url(r'^pmeters$', views.pmeters, name='pmeters'),
     url(r'^logs$', views.logs, name='logs'),
-    url(r'^relatobj$', views.related, name='rels')
+    url(r'^relatobj$', views.related, name='rels'),
+    url(r'^diagnosis$', views.diagnosis, name='diags')
+
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

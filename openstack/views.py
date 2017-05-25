@@ -25,13 +25,17 @@ from .utils import (
     get_related,
     get_metrics,
     get_maps,
-    format_maps
+    format_maps,
+    get_id_name_maps,
+    diagnosis_info,
+    get_meters
 )
-from .db.utils import(
+from .db.utils import (
     create_rules_table,
     RuleDb,
     DbUtil
 )
+
 
 @api_view(['POST'])
 def login(request, format=None):
@@ -271,7 +275,7 @@ def usages(request, format=None):
     return Response(r.json()['hypervisor_statistics'])
 
 
-@api_view(['GET','PUT','DELETE'])
+@api_view(['GET', 'PUT', 'DELETE'])
 def vm_detail(request, vm_id, format=None):
     data = get_token_tenant(request)
     if data['code'] == 400:
@@ -367,7 +371,7 @@ def pmeters(request, format=None):
         for t in utctime:
             time.append(datetime.datetime.utcfromtimestamp(int(t)).strftime('%H:%M:%S'))
         data[metric]['time'] = time
-    print "######################\n", data
+    # print "######################\n", data
     return Response(data)
 
 
@@ -411,7 +415,6 @@ def meters(request, name, format=None):
         ret_d['value'].append(float(s['counter_volume']))
     ret_d['time'].reverse()
     ret_d['value'].reverse()
-    print "---------------\n", ret_d
     return Response(ret_d)
 
 
@@ -438,7 +441,7 @@ def infos(request, format=None):
     r_key = requests.get(keys_url, headers=headers)
     if r_key.status_code != 200 or r_net.status_code != 200 \
             or r_flavor.status_code != 200 or r_image.status_code != 200:
-        print '404 here'
+        # print '404 here'
         return Response({}, status=status.HTTP_404_NOT_FOUND)
 
     ret_info['images'] = r_image.json()['images']
@@ -458,8 +461,8 @@ def logs(request, format=None):
         except:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
-	if holder == 'all':
-	    logs = Log.objects.all().order_by('-time')[:int(num)]
+        if holder == 'all':
+            logs = Log.objects.all().order_by('-time')[:int(num)]
         elif types == 'all':
             logs = Log.objects.filter(holder=holder).order_by('-time')[:int(num)]
         else:
@@ -467,11 +470,7 @@ def logs(request, format=None):
 
         rs = []
         for log in logs:
-            log_dict = {}
-            log_dict['holder'] = log.holder
-            log_dict['type'] = log.log_type
-            log_dict['info'] = log.log_info
-            log_dict['time'] = log.time
+            log_dict = {'holder': log.holder, 'type': log.log_type, 'info': log.log_info, 'time': log.time}
             rs.append(log_dict)
         return Response(rs)
 
@@ -508,6 +507,64 @@ def related(request, format=None):
         rs = get_related(types, vm=objects)
     else:
         rs = get_related(types, app=objects)
+    return Response(rs)
+
+
+@api_view(['GET'])
+def diagnosis(request, format=None):
+    """
+    应用性能出现异常, 根据本体推理得到关联资源(所在服务, 关联的应用, 关联的虚拟机(及其关键资源).)
+    :param request:
+    :param format:
+    :return:
+    """
+    try:
+        app = request.GET['app']
+    except:
+        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+    rs = []
+    id_maps = get_id_name_maps()
+    d_info = diagnosis_info(app)
+    key_res = d_info['res']
+
+    res = []
+    for r in key_res:
+        if r == 'CPU':
+            res.append('cpu_util')
+        elif r == 'Disk':
+            res.append('disk.usage')
+        elif r == 'Memory':
+            res.append('memory.usge')
+        # NOTE: network meters have not coped with well !!!!
+        # elif r == 'Network':
+        #     res.append('network')
+
+    for a in d_info['apps']:
+        rs.append({
+            'type': 'status',
+            'id': a,
+            'target': 'app',
+            'status': 'warning'
+        })
+
+    for s in d_info['services']:
+        rs.append({
+            'type': 'status',
+            'id': s,
+            'target': 'service',
+            'status': 'warning'
+        })
+
+    for v in d_info['vms']:
+        vm_id = id_maps[v]
+        rs.append({
+            'type': 'status',
+            'id': vm_id,
+            'target': 'vms',
+            'status': 'warning',
+            'warning': get_meters(vm_id, res)
+        })
     return Response(rs)
 
 

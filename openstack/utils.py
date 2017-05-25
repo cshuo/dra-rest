@@ -7,7 +7,7 @@ from rdflib import Namespace
 from FuXi.Rete.RuleStore import SetupRuleStore
 from FuXi.Rete.Util import generateTokenSet
 from pyzabbix import ZabbixAPI
-from datetime import datetime
+import datetime
 import time
 import requests
 import json
@@ -33,13 +33,17 @@ def get_token_tenant(request):
     if r.status_code == 200:
         token_id = r.json()["access"]["token"]["id"]
         tenant_id = r.json()["access"]["token"]["tenant"]["id"]
-        print token_id
+        # print token_id
         return {'code': 200, 'data': [token_id, tenant_id]}
     else:
         return {'code': 401, 'data': [None, None]}
 
 
 def get_id_name_maps():
+    """
+    获取vm的name, id对应映射, key是name, value是id;
+    :return:
+    """
     token_url = config.AUTH_URL
     post_d = {'auth': {'tenantName': config.TENANT,
                        'passwordCredentials': {'username': config.USER, 'password': config.PASSWORD}}}
@@ -204,7 +208,7 @@ def get_metrics(host, num_minutes):
 
     zapi = ZabbixAPI(config.ZABBIX_URL)
     zapi.login(config.ZABBIX_USER, config.ZABBIX_PASSWD)
-    time_till = time.mktime(datetime.now().timetuple())
+    time_till = time.mktime(datetime.datetime.now().timetuple())
     time_from = time_till - 60 * num_minutes
 
     cpu_idle_id = zapi.item.get(filter={'host': host, 'name': 'CPU idle time'})[0]['itemid']
@@ -240,3 +244,84 @@ def get_metrics(host, num_minutes):
     '''
 
     return {'cpu': cpu_rs, 'mem': mem_rs, 'disk': disk_rs, 'net_in': net_rs}
+
+
+def diagnosis_info(app):
+    """
+    根据本体推理获取相关联资源(关联的服务,应用,及虚拟机(关键资源显示));
+    :param app:
+    :return: array of dicts, containing all related objects and its detail info.
+    """
+    fact_graph, inferred_graph, ns = build_graph()
+
+    info ={
+        'vms': [],
+        'apps': [],
+        'services': []
+    }
+    # get relate service
+    r_list = list(fact_graph.query('SELECT ?RESULT {?RESULT :has_component :%s}' % app, initNs=ns))
+    info['services'] = format_list(r_list)
+
+    r_list = list(inferred_graph.query('SELECT ?RESULT {:%s :has_sibling ?RESULT}' % app, initNs=ns))
+    info['apps'] = format_list(r_list)
+
+    r_list = list(inferred_graph.query('SELECT ?RESULT {:%s :related_to ?RESULT}' % app, initNs=ns))
+    info['vms'] = format_list(r_list)
+
+    r_list = list(inferred_graph.query('SELECT ?RESULT {:%s :key_res ?RESULT}' % app, initNs=ns))
+    info['res'] = format_list(r_list)
+
+    return info
+
+
+def get_meters(vm_id, meters, interval=0.034):
+    """
+    given the id and the wanted meters of a vm, get the avg of most recent interval statistics of those meters.
+    :param vm_id:
+    :param meters:
+    :param interval: default as 2 minutes.
+    :return: dict data, like {'cpu': 80, 'mem': 80}
+    """
+    token_url = config.AUTH_URL
+    post_d = {'auth': {'tenantName': config.TENANT, 'passwordCredentials': {'username': config.USER, 'password': config.PASSWORD}}}
+    r = requests.post(token_url, json=post_d, headers={'Content-type': 'application/json'})
+    if r.status_code == 200:
+        token_id = r.json()["access"]["token"]["id"]
+    else:
+        return {}
+
+    rs = {}
+    for m in meters:
+        rs[m] = get_statistics(vm_id, m, interval, token_id)
+    return rs
+
+
+def get_statistics(vm_id, meter, interval, token_id):
+    """
+    获取一个虚拟机指定meter的最近interval时间内的平均使用值.
+    :param vm_id:
+    :param meter:
+    :param interval:
+    :param token_id:
+    :return:
+    """
+    meter_url = config.CEIL_URL + 'meters/' + meter + "/statistics"
+
+    # cal time range to get meter samples
+    now_t = time.gmtime()
+    end_t = datetime.datetime(*now_t[:6])
+    # TODO check validity of interval, must be number
+    begin_t = end_t - datetime.timedelta(hours=float(interval))
+
+    # query params
+    req_payload = (
+        ('q.field', 'resource_id'), ('q.op', 'eq'), ('q.value', vm_id),
+        ('q.field', 'timestamp'), ('q.op', 'ge'), ('q.value', begin_t.isoformat()),
+        ('q.field', 'timestamp'), ('q.op', 'lt'), ('q.value', end_t.isoformat())
+    )
+    headers = {'Content-type': 'application/json', 'X-Auth-Token': token_id}
+    r = requests.get(meter_url, params=req_payload, headers=headers).json()
+    if len(r) < 1:
+        return 0
+    return r[0]['avg']
