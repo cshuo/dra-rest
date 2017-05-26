@@ -324,4 +324,4 @@ def get_statistics(vm_id, meter, interval, token_id):
     r = requests.get(meter_url, params=req_payload, headers=headers).json()
     if len(r) < 1:
         return 0
-    return r[0]['avg']
+    return round(r[0]['avg'], 2)
