@@ -92,7 +92,6 @@ def get_related(types, **kwargs):
     """
     """
     _, inferedgraph, ns = build_graph()
-    # print closureDeltaGraph.serialize(format='n3')
     rs = []
     if types == 'res':
         r_list = list(
@@ -114,6 +113,28 @@ def get_related(types, **kwargs):
             name = str(r.split('#')[1])
             rs.append({'name': name, 'id': host_ids[name]})
     return rs
+
+
+def get_apps():
+    """
+    获取所有 web 类型的app, 及其对应的web url和threshold.
+    :return:
+    """
+    apps = []
+    factgraph, _, ns = build_graph()
+    r_list = list(factgraph.query('SELECT ?RESULT ?URL ?THRESHOLD { ?RESULT rdf:type :App . \
+        ?RESULT :has_type :Web . \
+        ?RESULT :has_metric ?MTC . \
+        ?MTC :has_url ?URL . \
+        ?MTC :has_threshold ?THRESHOLD.}', initNs=ns))
+
+    for r in r_list:
+        apps.append({
+            'app': str(r[0].split('#')[1]),
+            'url': str(r[1]),
+            'threshold': float(r[2])
+        })
+    return apps
 
 
 def get_maps(types, **kwargs):
@@ -266,12 +287,14 @@ def diagnosis_info(app):
     r_list = list(inferred_graph.query('SELECT ?RESULT {:%s :has_sibling ?RESULT}' % app, initNs=ns))
     info['apps'] = format_list(r_list)
 
-    r_list = list(inferred_graph.query('SELECT ?RESULT {:%s :related_to ?RESULT}' % app, initNs=ns))
-    info['vms'] = format_list(r_list)
-
-    r_list = list(inferred_graph.query('SELECT ?RESULT {:%s :key_res ?RESULT}' % app, initNs=ns))
-    info['res'] = format_list(r_list)
-
+    for app in info['apps']:
+        vm_list = format_list(list(fact_graph.query('SELECT ?RESULT {:%s :has_location ?RESULT}' % app, initNs=ns)))
+        res_list = format_list(list(inferred_graph.query('SELECT ?RESULT {:%s :key_res ?RESULT}' % app, initNs=ns)))
+        info['vms'].append({
+            'vm': vm_list[0],
+            'res': res_list
+        })
+    print info
     return info
 
 
@@ -293,7 +316,18 @@ def get_meters(vm_id, meters, interval=0.034):
 
     rs = {}
     for m in meters:
-        rs[m] = get_statistics(vm_id, m, interval, token_id)
+        if m == 'CPU':
+            m_name = 'cpu_util'
+        elif m == 'Memory':
+            m_name = 'memory.usage'
+        elif m == 'Disk':
+            m_name = 'disk.usage'
+        else:  # default value
+            m_name = 'cpu_util'
+        # NOTE: network meters have not coped with well !!!!
+        # elif m == 'Network':
+        #     m = 'network.usage'
+        rs[m] = get_statistics(vm_id, m_name, interval, token_id)
     return rs
 
 

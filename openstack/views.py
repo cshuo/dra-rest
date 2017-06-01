@@ -28,7 +28,8 @@ from .utils import (
     format_maps,
     get_id_name_maps,
     diagnosis_info,
-    get_meters
+    get_meters,
+    get_apps
 )
 from .db.utils import (
     create_rules_table,
@@ -55,6 +56,17 @@ def login(request, format=None):
     r_data = {'access': {'token_id': ret_info['access']['token']['id'],
                          'tenant_id': ret_info['access']['token']['tenant']['id']}}
     return Response(r_data)
+
+
+@api_view(['GET'])
+def apps_list(request, format=None):
+    """
+    根据本体文件, 获取所有的web类型应用 (主要dra用来对zabbix的 web scenario 和 web trigger 进行初始化)
+    :param request:
+    :param format:
+    :return:
+    """
+    return Response(get_apps())
 
 
 @api_view(['GET', 'POST'])
@@ -526,19 +538,6 @@ def diagnosis(request, format=None):
     rs = []
     id_maps = get_id_name_maps()
     d_info = diagnosis_info(app)
-    key_res = d_info['res']
-
-    res = []
-    for r in key_res:
-        if r == 'CPU':
-            res.append('cpu_util')
-        elif r == 'Disk':
-            res.append('disk.usage')
-        elif r == 'Memory':
-            res.append('memory.usge')
-        # NOTE: network meters have not coped with well !!!!
-        # elif r == 'Network':
-        #     res.append('network')
 
     for a in d_info['apps']:
         rs.append({
@@ -556,14 +555,14 @@ def diagnosis(request, format=None):
             'status': 'warning'
         })
 
-    for v in d_info['vms']:
-        vm_id = id_maps[v]
+    for vm in d_info['vms']:
+        vm_id = id_maps[vm['vm']]
         rs.append({
             'type': 'status',
             'id': vm_id,
             'target': 'vms',
             'status': 'warning',
-            'warning': get_meters(vm_id, res)
+            'warning': get_meters(vm_id, vm['res'])
         })
     return Response(rs)
 

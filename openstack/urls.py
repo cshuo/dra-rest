@@ -7,6 +7,7 @@ urlpatterns = [
     url(r'^login$', views.login, name='login'),
     url(r'^vms$', views.vms_list, name='vms'),
     url(r'^pms$', views.pms_list, name='pms'),
+    url(r'^apps$', views.apps_list, name='apps'),
     url(r'^maps$', views.maps_list, name='maps'),
     url(r'^rules$', views.rules, name='rules'),
     url(r'^rule/(?P<name>\S+)$', views.rule, name='rule'),
