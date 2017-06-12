@@ -85,32 +85,32 @@
 :web-1 rdf:type :App;
     :has_type :Web;
     :has_metric :RT-1;
-    :has_location :vm_web-1 .
+    :has_location :vm-1 .
 :db-1 rdf:type :App;
     :has_type :Db;
-    :has_location :vm_db-1 .
+    :has_location :vm-2 .
 :web-2 rdf:type :App;
     :has_type :Web;
     :has_metric :RT-2;
-    :has_location :vm_web-2 .
+    :has_location :vm-3 .
 :db-2 rdf:type :App;
     :has_type :Db;
-    :has_location :vm_db-2 .
+    :has_location :vm-4 .
 :web-3 rdf:type :App;
     :has_type :Web;
     :has_metric :RT-3;
-    :has_location :vm_web-3 .
+    :has_location :vm-5 .
 :db-3 rdf:type :App;
     :has_type :Db;
-    :has_location :vm_db-3 .
+    :has_location :vm-6 .
 
 :kolla1 rdf:type :PM; :has_pm_ip :20_0_1_11 .
 :kolla2 rdf:type :PM; :has_pm_ip :20_0_1_12 .
 :kolla3 rdf:type :PM; :has_pm_ip :20_0_1_13 .
 
-:vm_web-1 rdf:type :VM; :has_vm_ip :100_0_1_11; :has_location :kolla2 .
-:vm_db-1 rdf:type :VM; :has_vm_ip :100_0_1_12; :has_location :kolla1 .
-:vm_web-2 rdf:type :VM; :has_vm_ip :100_0_1_13; :has_location :kolla2 .
-:vm_db-2 rdf:type :VM; :has_vm_ip :100_0_1_14; :has_location :kolla1 .
-:vm_web-3 rdf:type :VM; :has_vm_ip :100_0_1_15; :has_location :kolla2 .
-:vm_db-3 rdf:type :VM; :has_vm_ip :100_0_1_16; :has_location :kolla1 .
+:vm-1 rdf:type :VM; :has_vm_ip :100_0_1_11; :has_location :kolla2 .
+:vm-2 rdf:type :VM; :has_vm_ip :100_0_1_12; :has_location :kolla1 .
+:vm-3 rdf:type :VM; :has_vm_ip :100_0_1_13; :has_location :kolla2 .
+:vm-4 rdf:type :VM; :has_vm_ip :100_0_1_14; :has_location :kolla1 .
+:vm-5 rdf:type :VM; :has_vm_ip :100_0_1_15; :has_location :kolla2 .
+:vm-6 rdf:type :VM; :has_vm_ip :100_0_1_16; :has_location :kolla1 .

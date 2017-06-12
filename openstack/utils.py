@@ -91,7 +91,7 @@ the vms/res an app/vm related.
 def get_related(types, **kwargs):
     """
     """
-    _, inferedgraph, ns = build_graph()
+    factgraph, inferedgraph, ns = build_graph()
     rs = []
     if types == 'res':
         r_list = list(
@@ -99,15 +99,13 @@ def get_related(types, **kwargs):
         for r in r_list:
             rs.append(str(r.split('#')[1]))
     elif types == 'app':
-        r_list = list(
-            inferedgraph.query('SELECT ?RESULT {:%s :related_to ?RESULT}' % kwargs[types], initNs=ns))
+        r_list = list(inferedgraph.query('SELECT ?RESULT {:%s :has_sibling ?RESULT}' % kwargs[types], initNs=ns))
         id_maps = get_id_name_maps()
         for r in r_list:
             name = str(r.split('#')[1])
             rs.append({'name': name, 'id': id_maps[name]})
     elif types == 'vm':
-        r_list = list(
-            inferedgraph.query('SELECT ?RESULT {:%s :related_to ?RESULT}' % kwargs[types], initNs=ns))
+        r_list = list(factgraph.query('SELECT ?RESULT {:%s :has_location ?RESULT}' % kwargs[types], initNs=ns))
         host_ids = get_hosts_info()
         for r in r_list:
             name = str(r.split('#')[1])

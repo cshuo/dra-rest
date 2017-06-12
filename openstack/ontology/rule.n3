@@ -19,6 +19,15 @@
 } .
 
 {
+  ?x :has_location ?y .
+  ?a :has_location ?b .
+  ?a :has_sibling ?x
+} =>
+{
+  ?y :has_sibling ?b
+} .
+
+{
   ?x :has_sibling ?y .
   ?y :has_location ?vm_y
 } =>
