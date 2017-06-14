@@ -22,7 +22,7 @@ from sqlalchemy import (
 )
 
 
-sqlURL = 'mysql://dra:cshuo@20.0.1.10:3306/machineDB'
+sqlURL = 'mysql://dra:cshuo@IP:PORT/machineDB'
 engine = create_engine(sqlURL)
 
 DBSession = sessionmaker(bind=engine)
