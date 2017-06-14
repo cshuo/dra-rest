@@ -31,11 +31,6 @@ from .utils import (
     get_meters,
     get_apps
 )
-from .db.utils import (
-    create_rules_table,
-    RuleDb,
-    DbUtil
-)
 
 
 @api_view(['POST'])
@@ -164,42 +159,6 @@ def maps_list(request, format=None):
     service_maps = get_maps('service')
     return Response(format_maps(pm_maps, vm_maps, service_maps))
     # return Response({'pm': pm_maps, 'service': service_maps, 'vm': vm_maps})
-
-
-@api_view(['GET', 'POST'])
-def rules(request, format=None):
-    if request.method == 'GET':
-        rules = RuleDb.list_rules()
-        if rules == None:
-            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
-            return Response(rules)
-    elif request.method == 'POST':
-        try:
-            name = request.data['name']
-            app_type = request.data['app_type']
-            content = request.data['content']
-        except:
-            return Response({}, status=status.HTTP_400_BAD_REQUEST)
-        add_success = RuleDb.add_rule(name=name, app_type=app_type, content=content)
-        if add_success:
-            return Response({'log': 'add rule successfully'})
-        else:
-            return Response({'log': 'fail to add rule'}, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['GET', 'DELETE'])
-def rule(request, name, format=None):
-    if request.method == 'GET':
-        rule_info = RuleDb.query_rule(name)
-        if not rule_info:
-            return Response({}, status=status.HTTP_404_NOT_FOUND)
-        return Response(rule_info)
-    elif request.method == 'DELETE':
-        delete_success = RuleDb.rm_rule(name)
-        if not delete_success:
-            return Response({}, status=status.HTTP_404_NOT_FOUND)
-        return Response({})
 
 
 @api_view(['GET'])
